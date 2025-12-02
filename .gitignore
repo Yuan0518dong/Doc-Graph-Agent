@@ -1,20 +1,23 @@
-# 1. 屏蔽虚拟环境 (最重要！)
+# 1. 屏蔽虚拟环境
 .venv/
 venv/
 env/
 
-# 2. 屏蔽数据文件 (防止泄密和仓库过大)
+# 2. 屏蔽数据目录 (data/ 下的所有内容，包括 PDF 和生成的 MD)
 data/
-*.pdf
-*.md
 
 # 3. 屏蔽敏感配置
 .env
 
-# 4. 屏蔽 Python 缓存垃圾
+# 4. 屏蔽 Python 缓存
 __pycache__/
 *.pyc
 
-# 5. 屏蔽 IDE 配置 (可选，但推荐)
+# 5. 屏蔽 IDE
 .idea/
 .vscode/
+*.swp
+
+# 6. 系统文件 (Mac/Windows)
+.DS_Store
+Thumbs.db
