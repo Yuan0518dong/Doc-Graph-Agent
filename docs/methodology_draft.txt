@@ -1,0 +1,24 @@
+=== 日期：Week 3 Day 2 ===
+=== 主题：Methodology - Structure-Aware Parsing (结构感知解析) ===
+
+[1. 核心创新点]
+我们提出了一种基于“栈自动机 (Stack Automaton)”的文档解析算法。
+传统的 RAG 方法通常把文档切成固定长度（比如 500 字），导致小标题和正文脱节。
+而我们的算法利用 Markdown 的标题层级（#, ##, ###），在读取文档时动态维护一个“路径栈”。
+
+[2. 英文论文草稿 (Draft for Paper)]
+Title: Context-Aware Hierarchical Document Parsing Mechanism
+
+Motivation:
+Existing RAG pipelines typically utilize fixed-size chunking (e.g., 512 tokens), which severs the semantic connection between a document's logical sections (e.g., "3.1 Model Architecture") and its content. This leads to "context loss" where retrieved chunks lack global awareness.
+
+Methodology:
+We introduce a Structure-Preserving Recursive Parser based on a stack automaton.
+1. Layout Analysis: The system first ingests Markdown-formatted documents derived from OCR tools.
+2. Stack-Based State Tracking: We employ a LIFO stack to dynamically track the document's header hierarchy. When a header of level L is encountered, the stack pops all elements with level >= L before pushing the new header.
+3. Path Injection: For every generated text chunk, we inject a linearized path string (e.g., "Root > Section 3 > Subsection 3.1") into the vector metadata.
+
+[3. 参考文献 (记住这篇就行)]
+论文名: RAPTOR: Recursive Abstractive Processing for Tree-Organized Retrieval
+来源: ICLR 2024 (顶会)
+关联: 这篇论文证明了“用树形结构组织文档”比“扁平切分”效果更好。我们今天的代码就是一种树形结构的实现。
