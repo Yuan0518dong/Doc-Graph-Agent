@@ -6,7 +6,7 @@ from src.processing.markdown_splitter import MarkdownContextSplitter
 # 路径配置
 BASE_DIR = Path(__file__).parent
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
-OUTPUT_FILE = PROCESSED_DIR / "chunks_cache.jsonl"
+OUTPUT_FILE = PROCESSED_DIR / "hierarchical_chunks.jsonl"
 
 
 def main():
