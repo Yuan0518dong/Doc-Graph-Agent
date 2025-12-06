@@ -5,17 +5,17 @@ from openai import OpenAI
 from pathlib import Path
 import re
 
-# === ⚙️ 全局配置 ===
+# === 全局配置 ===
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 CHROMA_PATH = BASE_DIR / "data" / "chroma_db"
 
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "zyyzdy0518"  # ✅ 你的密码
+NEO4J_PASSWORD = "zyyzdy0518"  # 密码
 
 OLLAMA_API_KEY = "ollama"
 OLLAMA_URL = "http://localhost:11434/v1"
-MODEL_NAME = "deepseek-r1:1.5b"  # ✅ 你的模型
+MODEL_NAME = "deepseek-r1:1.5b"  # 模型
 
 
 class HybridRAG:
@@ -46,7 +46,7 @@ class HybridRAG:
         """核心：去 Neo4j 里查"""
         if not chunk_ids: return []
 
-        # ✅ 修正点：将 CONTAINS 改为 HAS_CHUNK
+        # 修正点：将 CONTAINS 改为 HAS_CHUNK
         cypher = """
         MATCH (c:Chunk)
         WHERE c.id IN $ids
@@ -75,18 +75,18 @@ class HybridRAG:
         return enriched_info
 
     def chat(self, query):
-        print(f"\n🗣️ User: {query}")
+        print(f"\nUser: {query}")
         print("-" * 40)
 
         # Step 1: 向量检索
-        print("🔍 1. ChromaDB: 正在定位切片...")
+        print("1. ChromaDB: 正在定位切片...")
         results = self.collection.query(query_texts=[query], n_results=3)
 
         docs = results['documents'][0]
         ids = results['ids'][0]
 
         # Step 2: 图谱增强
-        print(f"🕸️ 2. Neo4j: 正在扩展上下文 (IDs: {ids})...")
+        print(f"2. Neo4j: 正在扩展上下文 (IDs: {ids})...")
         graph_data = self.get_graph_context(ids)
 
         # 组装 Prompt
@@ -96,7 +96,7 @@ class HybridRAG:
             # 获取图谱信息
             g_info = graph_data.get(c_id, {"section": "N/A", "entities": []})
 
-            # ✅ 这里的 entities 应该不为空了
+            # 这里的 entities 应该不为空了
             entities_str = ', '.join(g_info['entities']) if g_info['entities'] else "无关联实体"
 
             snippet = f"""
@@ -110,7 +110,7 @@ class HybridRAG:
         full_context = "\n".join(context_parts)
 
         # Step 3: DeepSeek 生成
-        print("🤖 3. DeepSeek: 正在思考...")
+        print("3. DeepSeek: 正在思考...")
 
         sys_prompt = "你是一个专业的项目申报助手。请根据提供的【图谱增强上下文】回答问题。"
         user_prompt = f"【上下文】：\n{full_context}\n\n【问题】：{query}"
@@ -122,20 +122,35 @@ class HybridRAG:
                     {"role": "system", "content": sys_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
-                temperature=0.3
+                temperature=0
             )
             answer = self.clean_think(resp.choices[0].message.content)
 
             print("-" * 40)
-            print(f"🧠 AI Answer:\n{answer}")
+            print(f"AI Answer:\n{answer}")
             print("-" * 40)
 
         except Exception as e:
-            print(f"❌ DeepSeek 调用失败: {e}")
-            print("💡 建议: 检查 Ollama 是否开启 (ollama serve)")
+            print(f"DeepSeek 调用失败: {e}")
+            print("建议: 检查 Ollama 是否开启 (ollama serve)")
 
 
 if __name__ == "__main__":
     bot = HybridRAG()
     bot.chat("Transformer 的核心机制是什么？它和 RNN 有什么区别？")
     bot.close()
+
+
+    """
+    Ablation Study (消融实验)
+    目标： 理解 Chroma 和 Neo4j 的配合。
+
+    操作： 
+    打开 src/retrieval/rag_chat.py。
+    找到 chat 函数。
+    注释掉 Step 2 (图谱增强) 的代码，只保留 Chroma 检索，直接把 docs 喂给 DeepSeek。
+    
+    运行并提问："Transformer 和 RNN 的区别？"
+    观察： 只有向量检索时，回答的质量下降了多少？是不是变得笼统了？丢失了哪些细节？
+    收获： 这就是你论文里 Ablation Study (消融实验) 的雏形！你在面试时可以说：“我对比了纯向量检索和图增强检索，发现后者在逻辑关联性上提升了...”
+    """

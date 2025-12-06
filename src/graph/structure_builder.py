@@ -1,3 +1,6 @@
+"""
+(显式结构)：基于规则，构建文档的骨架（目录树）
+"""
 import json
 import os
 from neo4j import GraphDatabase
@@ -11,7 +14,7 @@ DATA_PATH = BASE_DIR / "data" / "processed" / "hierarchical_chunks.jsonl"
 
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "zyyzdy0518"  # ✅ 你的密码
+NEO4J_PASSWORD = "zyyzdy0518"  # 密码
 
 
 class KnowledgeGraphBuilder:
@@ -23,14 +26,14 @@ class KnowledgeGraphBuilder:
 
     def clean_graph(self):
         """清空数据（不清空 Schema）"""
-        print("🧹 正在清空旧图谱数据...")
+        print("正在清空旧图谱数据...")
         with self.driver.session() as session:
             session.run("MATCH (n) DETACH DELETE n")
-        print("✅ 数据库数据已清空")
+        print("数据库数据已清空")
 
     def init_schema(self):
         """初始化约束和索引 (使用 IF NOT EXISTS 防止报错)"""
-        print("⚙️ 正在初始化 Schema (约束与索引)...")
+        print("正在初始化 Schema (约束与索引)...")
         with self.driver.session() as session:
             # 1. Document 唯一性约束
             # 语法：如果不存在才创建
@@ -41,24 +44,23 @@ class KnowledgeGraphBuilder:
             session.run("CREATE CONSTRAINT chunk_id_unique IF NOT EXISTS FOR (c:Chunk) REQUIRE c.id IS UNIQUE")
 
             # 3. Section 路径索引 (加速查询)
-            # 这就是刚才报错的那一行，加了 IF NOT EXISTS 就没事了
             session.run("CREATE INDEX section_path_index IF NOT EXISTS FOR (s:Section) ON (s.full_path)")
 
-            print("✅ Schema 初始化完毕 (跳过了已存在的规则)")
+            print("Schema 初始化完毕 (跳过了已存在的规则)")
 
     def build_from_jsonl(self):
         """核心构建逻辑"""
         if not DATA_PATH.exists():
-            print(f"❌ 未找到数据文件: {DATA_PATH}")
+            print(f"未找到数据文件: {DATA_PATH}")
             return
 
         # 1. 先清空数据
         self.clean_graph()
 
-        # 2. 初始化 Schema (防弹版)
+        # 2. 初始化 Schema
         self.init_schema()
 
-        print(f"🚀 开始构建图谱: {DATA_PATH.name}")
+        print(f"开始构建图谱: {DATA_PATH.name}")
 
         # 读取文件统计行数
         with open(DATA_PATH, "r", encoding="utf-8") as f:
@@ -88,7 +90,7 @@ class KnowledgeGraphBuilder:
                 self._create_nodes(headers, content, chunk_id, source_doc, path_str)
                 count += 1
 
-        print(f"✅ 图谱构建完成！共处理 {count} 个切片。")
+        print(f"图谱构建完成！共处理 {count} 个切片。")
 
     def _create_nodes(self, headers, content, chunk_id, source_name, path_str):
         with self.driver.session() as session:

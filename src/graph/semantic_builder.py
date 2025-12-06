@@ -1,3 +1,7 @@
+"""
+(隐式语义)：基于模型，构建文档的血肉（知识网）
+    把扁平的 JSONL 数据，还原成 Neo4j 里立体的“树状结构”
+"""
 import json
 import os
 import time
@@ -6,16 +10,16 @@ from tqdm import tqdm
 from neo4j import GraphDatabase
 from openai import OpenAI
 
-# === ⚙️ 配置区域 (DeepSeek R1 Local) ===
+# ===  配置区域 (DeepSeek R1 Local) ===
 # 1. Neo4j 配置
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "zyyzdy0518" # ✅ 你的密码
+NEO4J_PASSWORD = "zyyzdy0518" # 数据库密码
 
 # 2. Local LLM 配置 (Ollama)
 API_KEY = "ollama"
 BASE_URL = "http://localhost:11434/v1"
-MODEL_NAME = "deepseek-r1:1.5b" # ✅ 你的模型
+MODEL_NAME = "deepseek-r1:1.5b" # 使用的本地模型
 
 class SemanticGraphBuilder:
     def __init__(self):
@@ -70,28 +74,29 @@ class SemanticGraphBuilder:
             return data.get("triples", [])
 
         except Exception as e:
-            # print(f"⚠️ 提取失败: {e}") # 这一行可以注释掉，保持清爽
+            # print(f"提取失败: {e}")
             return []
 
     def build_semantics(self, limit=5):
-        print(f"🚀 开始语义提取 (Model: {MODEL_NAME}, Limit: {limit})...")
-        print("🐢 DeepSeek R1 正在本地思考中...")
+        print(f"开始语义提取 (Model: {MODEL_NAME}, Limit: {limit})...")
+        print("DeepSeek R1 正在本地思考中...")
 
         chunks_to_process = []
         with self.driver.session() as session:
-            # ✅ 关键修正点：这里原来是 c.text，现在改成 c.content
+            # 关键修正点：这里原来是 c.text，现在改成 c.content
             # 同时为了兼容后面的代码，我们用 AS text 把它别名化
             result = session.run(f"""
                 MATCH (c:Chunk) 
                 WHERE c.content IS NOT NULL
                 RETURN c.id AS id, c.content AS text 
                 LIMIT {limit}
-            """)
+                """)
             chunks_to_process = [record for record in result]
 
-        print(f"📊 选中 {len(chunks_to_process)} 个切片...")
+        print(f"选中 {len(chunks_to_process)} 个切片...")
 
         with self.driver.session() as session:
+            # tqdm(...)：为遍历过程添加进度条，desc="Reasoning" 是进度条名称（显示 “Reasoning”），提升长任务的可视化体验
             for record in tqdm(chunks_to_process, desc="Reasoning"):
                 chunk_id = record["id"]
                 text = record["text"]
@@ -118,10 +123,9 @@ class SemanticGraphBuilder:
                     relation=triple.get("relation", "RELATED")
                     )
 
-        print("🎉 语义增强完成！")
+        print("语义增强完成！")
 
 if __name__ == "__main__":
     builder = SemanticGraphBuilder()
-    # ⚠️ 既然刚才已经失败了，这次可以先跑 5 个试试，或者直接跑完
     builder.build_semantics(limit=20)
     builder.close()

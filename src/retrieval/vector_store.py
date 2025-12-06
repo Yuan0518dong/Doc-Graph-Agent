@@ -28,10 +28,10 @@ class VectorStoreBuilder:
 
     def ingest(self):
         if not DATA_PATH.exists():
-            print(f"❌ 找不到数据文件: {DATA_PATH}")
+            print(f"找不到数据文件: {DATA_PATH}")
             return
 
-        print(f"🚀 开始向量化 (Embedding)...")
+        print(f"开始向量化 (Embedding)...")
 
         documents = []
         metadatas = []
@@ -40,7 +40,7 @@ class VectorStoreBuilder:
         with open(DATA_PATH, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
-        print(f"📊 共有 {len(lines)} 条数据待处理...")
+        print(f"共有 {len(lines)} 条数据待处理...")
 
         for idx, line in enumerate(tqdm(lines, desc="Vectorizing")):
             chunk = json.loads(line)
@@ -50,7 +50,7 @@ class VectorStoreBuilder:
             content = f"Path: {chunk['metadata'].get('path', '')}\nContent: {chunk['content']}"
             documents.append(content)
 
-            # === 🚨 修复核心：清洗 Metadata ===
+            # === 修复核心：清洗 Metadata ===
             meta = chunk["metadata"].copy()  # 复制一份，别改坏了原数据
 
             # ChromaDB 不支持列表，所以要把 headers 转成字符串
@@ -72,7 +72,7 @@ class VectorStoreBuilder:
         if documents:
             self.collection.upsert(documents=documents, metadatas=metadatas, ids=ids)
 
-        print(f"✅ 向量库构建完成！共存储 {self.collection.count()} 个切片。")
+        print(f"向量库构建完成！共存储 {self.collection.count()} 个切片。")
 
 
 if __name__ == "__main__":

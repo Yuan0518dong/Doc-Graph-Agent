@@ -86,7 +86,7 @@ class MarkdownContextSplitter:
             metadata={
                 "source": source_name,
                 "path": current_path,
-                "headers": headers_list,  # ✅ 必须加这个，给 Neo4j 用
+                "headers": headers_list,  # 必须加这个，给 Neo4j 用
                 "level": len(header_stack)
             }
         )
@@ -100,10 +100,10 @@ def process_all_markdowns():
     # 扫描 Markdown 文件
     md_files = list(INPUT_DIR.glob("*.md"))
     if not md_files:
-        print(f"❌ 错误：在 {INPUT_DIR} 没找到 .md 文件！请先运行 pdf_parser.py")
+        print(f"错误：在 {INPUT_DIR} 没找到 .md 文件！请先运行 pdf_parser.py")
         return
 
-    print(f"🚀 [AST Logic] 正在递归切分 {len(md_files)} 个 Markdown 文件...")
+    print(f"[AST Logic] 正在递归切分 {len(md_files)} 个 Markdown 文件...")
 
     for md_file in md_files:
         with open(md_file, "r", encoding="utf-8") as f:
@@ -118,7 +118,7 @@ def process_all_markdowns():
         for chunk in all_chunks:
             f.write(json.dumps(chunk, ensure_ascii=False) + "\n")
 
-    print(f"✅ 切分完成！已保存至: {OUTPUT_FILE.name}")
+    print(f"切分完成！已保存至: {OUTPUT_FILE.name}")
 
 
 if __name__ == "__main__":
