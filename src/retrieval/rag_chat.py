@@ -15,7 +15,7 @@ NEO4J_PASSWORD = "zyyzdy0518"  # 密码
 
 OLLAMA_API_KEY = "ollama"
 OLLAMA_URL = "http://localhost:11434/v1"
-MODEL_NAME = "deepseek-r1:1.5b"  # 模型
+MODEL_NAME = "qwen2.5:1.5b"  # 模型
 
 
 class HybridRAG:
@@ -73,6 +73,40 @@ class HybridRAG:
                     "entities": record["entities"]
                 }
         return enriched_info
+
+    # === 核心方法：供 Agent 调用 ===
+    def search(self, query: str, top_k: int = 3) -> str:
+        """
+        只负责检索资料，不负责回答。返回拼接好的上下文 Context。
+        """
+        # 1. 向量检索
+        results = self.collection.query(query_texts=[query], n_results=top_k)
+        if not results['ids'][0]:
+            return "未在数据库中找到相关信息。"
+
+        ids = results['ids'][0]
+        docs = results['documents'][0]
+
+        # 2. 图谱检索
+        graph_data = self.get_graph_context(ids)
+
+        # 3. 组装成纯文本给 Agent 看
+        context_parts = []
+        for i, doc in enumerate(docs):
+            c_id = ids[i]
+            g_info = graph_data.get(c_id, {"section": "N/A", "entities": []})
+            entities_str = ', '.join(g_info['entities']) if g_info['entities'] else "无"
+
+            snippet = f"""
+            [资料 {i + 1}]
+            来源: {g_info['section']}
+            关联实体: {entities_str}
+            内容: {doc}
+            """
+            context_parts.append(snippet)
+
+        return "\n".join(context_parts)
+
 
     def chat(self, query):
         print(f"\nUser: {query}")
@@ -137,7 +171,8 @@ class HybridRAG:
 
 if __name__ == "__main__":
     bot = HybridRAG()
-    bot.chat("Transformer 的核心机制是什么？它和 RNN 有什么区别？")
+    # 测试 search 方法是否只返回字符串
+    print(bot.search("Transformer 的优势"))
     bot.close()
 
 

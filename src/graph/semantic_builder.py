@@ -19,7 +19,7 @@ NEO4J_PASSWORD = "zyyzdy0518" # 数据库密码
 # 2. Local LLM 配置 (Ollama)
 API_KEY = "ollama"
 BASE_URL = "http://localhost:11434/v1"
-MODEL_NAME = "deepseek-r1:1.5b" # 使用的本地模型
+MODEL_NAME = "qwen2.5:1.5b" # 使用的本地模型
 
 class SemanticGraphBuilder:
     def __init__(self):
