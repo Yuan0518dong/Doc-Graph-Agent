@@ -75,7 +75,7 @@ class HybridRAG:
         return enriched_info
 
     # === 核心方法：供 Agent 调用 ===
-    def search(self, query: str, top_k: int = 3) -> str:
+    def search(self, query: str, top_k: int = 6) -> str:
         """
         只负责检索资料，不负责回答。返回拼接好的上下文 Context。
         """
