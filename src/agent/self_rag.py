@@ -48,6 +48,11 @@ class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], operator.add] #遇到多个 messages，请使用 + 来合并，而不是覆盖
     loop_count: int # 防止死循环
 
+    # Annotated 是什么?
+    # 给一个类型 附加“额外的元信息
+    # Annotated[真实类型, 附加信息]
+    steps: Annotated[list[str], operator.add]
+
 # === 节点 1: 思考者 (Agent) ===
 def agent_node(state: AgentState):
     """
@@ -124,7 +129,17 @@ def agent_node(state: AgentState):
 
     print(f"[Agent Output]: {response.content[:50]}...")
 
-    return {"messages": [response], "loop_count": loop_count}
+    # === 优化这里的 steps 描述 ===
+    if has_valid_context:
+        step_description = "资料已到位，正在切换至【作家模式】生成最终回答..."
+    else:
+        step_description = "尚未获取有效资料，正在【搜查官模式】下规划搜索关键词..."
+
+    return {
+        "messages": [response],
+        "loop_count": loop_count,
+        "steps": [step_description]  # 这里的描述现在是动态的了！
+    }
 
 # === 节点 2: 路由 (Router) ===
 def router_node(state: AgentState):
@@ -201,7 +216,8 @@ def tool_and_grade_node(state: AgentState):
             print("[Grader] 资料相关！通过！")
             return {
                 "messages": [HumanMessage(content=f"【系统通知】：资料有效。\n内容：{doc_content}\n\n请回答。")],
-                "loop_count": loop_count +1
+                "loop_count": loop_count +1,
+                "steps": ["质检通过：检索到的资料与问题高度相关。"]
             }
         else:
             print("[Grader] 资料无关！打回重写！")
@@ -225,7 +241,8 @@ def tool_and_grade_node(state: AgentState):
             return {
                 "messages": [HumanMessage(
                     content=f"【系统通知】：你搜索的 '{query}' 结果与问题无关。\n请**更换关键词**重新尝试搜索。")],
-                "loop_count": loop_count + 1
+                "loop_count": loop_count + 1,
+                "steps": [f"质检失败：检索词 '{query}' 结果无关，准备重新规划关键词。"]
             }
 
     except Exception as e:
@@ -289,6 +306,11 @@ if __name__ == "__main__":
     final_state2 = app.invoke(input2, config=run_config)
 
     print(f"🤖 Agent (A2): {final_state2['messages'][-1].content}")
+
+    # --- 新增：打印思维轨迹 ---
+    print("\n🛤️ 思维轨迹图:")
+    for i, step in enumerate(final_state2["steps"]):
+        print(f"{i + 1}. {step}")
 
 
 
