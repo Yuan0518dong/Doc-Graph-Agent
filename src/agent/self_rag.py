@@ -215,9 +215,10 @@ def tool_and_grade_node(state: AgentState):
         if score == "yes":
             print("[Grader] 资料相关！通过！")
             return {
-                "messages": [HumanMessage(content=f"【系统通知】：资料有效。\n内容：{doc_content}\n\n请回答。")],
-                "loop_count": loop_count +1,
-                "steps": ["质检通过：检索到的资料与问题高度相关。"]
+                "messages": [HumanMessage(
+                    content=f"【系统通知】：资料有效。\n\n【原文证据库】：\n{doc_content}\n\n【指令】：请结合上述证据回答用户问题，严禁胡编乱造。")],
+                "loop_count": loop_count + 1,
+                "steps": ["质检通过：已锁定原文证据。"]
             }
         else:
             print("[Grader] 资料无关！打回重写！")
