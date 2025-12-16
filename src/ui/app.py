@@ -100,9 +100,6 @@ if prompt := st.chat_input("请输入你的问题，例如：本项目立项依�
             # 3. 把最终答案存入历史记录（注意：这里只存 AI 的回答，不存 evidence，以免重复）
             st.session_state.chat_history.append({"role": "assistant", "content": full_response})
 
-            # 3. 把最终答案存入历史记录（这样刷新时就不会再蹦字了）
-            st.session_state.chat_history.append({"role": "assistant", "content": full_response})
-
             # 4. 更新侧边栏的思维轨迹
             st.session_state.steps_log = result.get("steps", [])
 
