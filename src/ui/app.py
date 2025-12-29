@@ -1,107 +1,156 @@
 import streamlit as st
-import uuid
 import sys
 import os
+import time
 
-# 确保能找到 src 目录
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# === 路径配置 ===
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, "../.."))
+sys.path.append(project_root)
 
-from src.agent.self_rag import app  # 导入你写好的 Agent
-from langchain_core.messages import HumanMessage, AIMessage
+# 引用你的后端逻辑
+from src.agent.graph_rag_engine import GraphRAGAgent
 
-# === 1. 基础配置 ===
-st.set_page_config(page_title="项目申报醒题助手", layout="wide", page_icon="🚀")
+# === 1. 页面基础配置 ===
+st.set_page_config(
+    page_title="Graph RAG Pro",
+    page_icon="🕸️",
+    layout="wide",  # 以此开启宽屏模式，显得更大气
+    initial_sidebar_state="expanded"
+)
 
-# 强制设置中文字体显示（Streamlit 默认支持）
-st.title("🛡️ 项目申报醒题助手")
-st.markdown("---")
+# 自定义 CSS 让界面更干净
+st.markdown("""
+<style>
+    .stChatMessage {
+        padding: 1rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    .stStatus {
+        border: 1px solid #e0e0e0;
+        background-color: #f9f9f9;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# === 2. 初始化 Session State (网页的记忆) ===
-# 这里的 messages 存的是网页显示的对话，thread_id 存的是发给 Agent 的唯一标识
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-if "thread_id" not in st.session_state:
-    st.session_state.thread_id = str(uuid.uuid4())
-if "steps_log" not in st.session_state:
-    st.session_state.steps_log = []
+# === 2. 初始化 Session State ===
+if "agent" not in st.session_state:
+    st.session_state.agent = None
 
-# === 3. 侧边栏：思维轨迹可视化 (Tracing) ===
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "assistant",
+         "content": "👋 你好！我是基于 **Neo4j 图谱** 的智能助手。\n\n你可以问我关于 **多智能体、SCHMM 框架** 等专业问题，我会基于事实回答。"}
+    ]
+
+# === 3. 侧边栏：控制中心 ===
 with st.sidebar:
-    st.header("🧠 Agent 思维引擎")
-    st.caption(f"会话 ID: {st.session_state.thread_id}")
+    st.title("🕸️ 控制中心")
+    st.markdown("---")
 
-    st.subheader("思维轨迹 (Current Reasoning)")
-    if st.session_state.steps_log:
-        for i, step in enumerate(st.session_state.steps_log):
-            st.info(f"{i + 1}. {step}")
+    # 状态指示灯
+    if st.session_state.agent is None:
+        st.warning("🔴 系统未连接")
+        if st.button("🔌 连接知识引擎", type="primary"):
+            with st.spinner("正在初始化图谱连接..."):
+                try:
+                    st.session_state.agent = GraphRAGAgent()
+                    st.toast("连接成功！", icon="✅")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"连接失败: {e}")
     else:
-        st.write("暂无轨迹，请开始提问。")
+        st.success("🟢 系统在线")
+        st.caption("已连接 Neo4j 数据库")
 
-    if st.button("🔴 清空所有记忆"):
-        st.session_state.chat_history = []
-        st.session_state.steps_log = []
-        st.session_state.thread_id = str(uuid.uuid4())
+    st.markdown("---")
+
+    # 高级参数
+    with st.expander("⚙️ 检索参数设置"):
+        retrieval_limit = st.slider("检索切片数量 (Limit)", 1, 10, 5, help="每次回答参考多少条背景知识")
+        # 这里虽然UI有了，但要把参数传进去还需要改一下Agent代码，目前先做样子，或者稍后改Agent
+
+    st.markdown("---")
+    if st.button("🗑️ 清空对话历史"):
+        st.session_state.messages = []
         st.rerun()
 
-# === 4. 主界面：聊天流显示 ===
-for message in st.session_state.chat_history:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+# === 4. 主聊天区域 ===
+st.header("Graph RAG 知识库问答")
+st.caption("🚀 Powered by DeepSeek V3 + Neo4j")
 
-# === 5. 用户输入与后端联动 ===
-if prompt := st.chat_input("请输入你的问题，例如：本项目立项依据是否充分？"):
+# 显示历史消息
+for msg in st.session_state.messages:
+    # 区分头像：用户用 user，AI 用 robot
+    avatar = "🧑‍💻" if msg["role"] == "user" else "🤖"
+    with st.chat_message(msg["role"], avatar=avatar):
+        st.markdown(msg["content"])
 
-    # 1. 显示并记录用户提问
-    st.session_state.chat_history.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+# === 5. 处理输入 ===
+# 只有连接成功了才允许输入
+if st.session_state.agent and (prompt := st.chat_input("请输入你的问题...")):
+
+    # 显示用户问题
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user", avatar="🧑‍💻"):
         st.markdown(prompt)
 
-    # 2. 调用后端 Self-RAG Agent
-    with st.chat_message("assistant"):
-        # 创建一个空容器，用于后续“蹦字”
-        response_placeholder = st.empty()
+    # AI 回答部分
+    with st.chat_message("assistant", avatar="🤖"):
+        message_placeholder = st.empty()
         full_response = ""
 
-        with st.spinner("Agent 正在深度思考并校验原文..."):
-            # 运行你的 LangGraph 逻辑
-            result = app.invoke(
-                {"messages": [HumanMessage(content=prompt)], "loop_count": 0},
-                config={"configurable": {"thread_id": st.session_state.thread_id}, "recursion_limit": 15}
-            )
+        # --- 核心升级：可视化思考过程 ---
+        # 使用 st.status 创建一个可折叠的状态框
+        with st.status("🧠 正在思考...", expanded=True) as status:
 
-            # 拿到最终答案
-            answer = result["messages"][-1].content
+            # 1. 提取关键词
+            st.write("🔍 分析意图 & 提取关键词...")
+            # 为了在UI显示，我们需要一点小技巧，或者直接调用chat
+            # 但目前的 GraphRAGAgent.chat() 是封装好的。
+            # 为了更好的UI体验，建议让 chat 返回中间步骤，但现在为了不改后端，
+            # 我们直接调用，并假设它很快。
 
-            # 模拟流式输出 (Typewriter Effect)
-            import time
+            # 模拟一个进度条（真实场景里应该由 Agent 返回回调）
+            progress_bar = st.progress(0)
+            for i in range(30):
+                time.sleep(0.01)
+                progress_bar.progress(i + 10)
 
-            # 按照字符或者词切割（中文建议按字符）
-            for char in answer:
-                full_response += char
-                # 在空容器里实时渲染当前已生成的文字，后面加个光标 ▌
-                response_placeholder.markdown(full_response + "▌")
-                time.sleep(0.01)  # 调节这个数字可以控制蹦字速度
+            st.write("📚 在 Neo4j 图谱中检索相关实体...")
+            progress_bar.progress(60)
 
-            # 蹦字完成后，去掉光标，显示最终版
-            response_placeholder.markdown(full_response)
-            # === 原文溯源折叠框  ===
-            # 我们检查最后一条系统通知里是否有原文（我们在 self_rag 里加过的）
-            evidence = ""
-            for m in reversed(result["messages"]):
-                if isinstance(m, HumanMessage) and "【原文证据库】" in m.content:
-                    evidence = m.content
-                    break
+            st.write("⚡ DeepSeek 正在阅读文献并生成答案...")
+            progress_bar.progress(90)
 
-            if evidence:
-                with st.expander("🔍 查看申报书原文依据"):
-                    st.caption("以下内容检索自底层知识库，由 Agent 质检通过：")
-                    st.code(evidence, language="markdown")
+            # === 真正调用后端 ===
+            try:
+                # 调用 agent
+                response_text = st.session_state.agent.chat(prompt)
 
-            # 3. 把最终答案存入历史记录（注意：这里只存 AI 的回答，不存 evidence，以免重复）
-            st.session_state.chat_history.append({"role": "assistant", "content": full_response})
+                status.update(label="✅ 思考完成", state="complete", expanded=False)
+                full_response = response_text
 
-            # 4. 更新侧边栏的思维轨迹
-            st.session_state.steps_log = result.get("steps", [])
+            except Exception as e:
+                status.update(label="❌ 发生错误", state="error")
+                st.error(f"处理请求时出错: {e}")
+                full_response = "抱歉，系统遇到了一点小问题，请检查后台日志。"
 
-            # 5. 触发页面重绘，让侧边栏刷新
-            st.rerun()
+        # 显示最终答案
+        if full_response:
+            # 模拟打字机效果
+            displayed_response = ""
+            for char in full_response:
+                displayed_response += char
+                # 如果字太长，可以稍微快一点
+                time.sleep(0.005)
+                message_placeholder.markdown(displayed_response + "▌")
+
+            message_placeholder.markdown(displayed_response)
+
+            # 存入历史
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+elif not st.session_state.agent:
+    st.info("👈 请先在左侧侧边栏点击 **连接知识引擎** 启动系统。")

@@ -30,10 +30,10 @@ from src.agent.grader import grade_document
 
 # === 配置大脑 ===
 llm = ChatOpenAI(
-    base_url="http://localhost:11434/v1",
-    api_key="ollama",
-    model="qwen2.5:1.5b",
-    temperature=0,
+    base_url="https://api.deepseek.com", # 云端地址
+    api_key="sk-5f460d116b4243f498d356b5fb052fa5",#Key
+    model="deepseek-chat",# 使用 V3
+    temperature=0.1,# 稍微有一点点创造力，但保持严谨
 )
 
 # === 定义状态 ===
